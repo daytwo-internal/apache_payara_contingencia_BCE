@@ -1,0 +1,27 @@
+---
+- name: Detener DAS standalone
+  ansible.builtin.command: "{{ asadmin_path }} stop-domain {{ payara_domain }}"
+  when: manage_das | default(false) | bool
+  register: stop_das_result
+  changed_when: true
+  failed_when: false
+
+- name: Marcar standalone como no administrado si manage_das=false
+  ansible.builtin.debug:
+    msg: "Host sin Deployment Groups y manage_das=false: no se detiene el DAS."
+  when: not (manage_das | default(false) | bool)
+
+- name: Publicar hechos del resultado final stop standalone
+  ansible.builtin.set_fact:
+    payara_final_state: >-
+      Host sin Deployment Groups. {{
+      'Se ejecutó stop-domain sobre ' ~ payara_domain
+      if (manage_das | default(false) | bool)
+      else 'No se tocó el DAS porque manage_das=false.'
+      }}
+    payara_dg_procesados: []
+    payara_ok: "{{ (not (manage_das | default(false) | bool)) or (stop_das_result is defined and stop_das_result.rc == 0) }}"
+    payara_instancias_fallidas: []
+    payara_das_action: "{{ 'STOP-DOMAIN' if (manage_das | default(false) | bool) else 'NO ADMINISTRADO' }}"
+    payara_das_ok: "{{ (not (manage_das | default(false) | bool)) or (stop_das_result is defined and stop_das_result.rc == 0) }}"
+    payara_topologia: "STANDALONE/SIN_DG"

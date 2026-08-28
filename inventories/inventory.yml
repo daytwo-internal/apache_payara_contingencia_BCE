@@ -1,0 +1,28 @@
+[payara_v6]
+#bceqlbtrsitdes01 ansible_host=172.28.3.128 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
+
+[payara_v5]
+#bceqpayaraqa04 ansible_host=172.23.34.49 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
+
+# Grupo "das" que agrupa a ambos, para poder correr el playbook contra
+# todos con "hosts: das", o limitarlo con --limit payara_v5 / --limit payara_v6
+[das:children]
+payara_v6
+payara_v5
+
+# La ruta de ansible_ssh_private_key_file de arriba es RELATIVA: asume que
+# ejecutas "ansible-playbook" desde la raíz del proyecto (donde está esta
+# carpeta llaves/, junto a inventory.ini). Si lo corres desde otro lado,
+# usa una ruta absoluta en su lugar, ej:
+#   ansible_ssh_private_key_file=/home/tu_usuario/bce-payara-stop-start/llaves/id_ed25519_gitlab_ci
+#
+# IMPORTANTE - permisos del archivo de llave (SSH la rechaza si están muy
+# abiertos):
+#   chmod 600 llaves/id_ed25519_gitlab_ci
+#
+# IMPORTANTE - esta carpeta "llaves/" NUNCA debe subirse al repositorio
+# (ver .gitignore). Si esto corre desde un pipeline de GitLab CI, lo
+# correcto es NO commitear la llave: inyectarla en tiempo de ejecución
+# desde una variable CI/CD de tipo "File" (Settings > CI/CD > Variables),
+# y apuntar ansible_ssh_private_key_file a esa ruta temporal que GitLab
+# genera (viene en una variable como $ID_ED25519_GITLAB_CI).

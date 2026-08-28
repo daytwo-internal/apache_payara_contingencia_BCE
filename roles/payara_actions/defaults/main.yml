@@ -1,0 +1,23 @@
+# Acciones permitidas para payara_action
+valid_payara_actions:
+  - status
+  - stop
+  - start
+
+# Si el rol debe administrar el DAS (start-domain/stop-domain) en este host.
+# En hosts con Deployment Groups normalmente será true solo en el nodo
+# que aloja el DAS; en hosts standalone depende de si ese host tiene su
+# propio DAS.
+manage_das: false
+
+# Si se descubre automáticamente la lista de Deployment Groups vía
+# "asadmin list-deployment-groups". Si se pone en false, se debe definir
+# manualmente la variable dg_list en group_vars/host_vars.
+dg_autodiscover: true
+
+# Reintentos/espera genéricos para operaciones de arranque/parada
+check_retries: 30
+check_delay: 10
+
+# Puerto de correo por defecto (host/to/from se definen por entorno)
+mail_port: 25

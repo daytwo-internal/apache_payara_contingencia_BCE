@@ -1,0 +1,19 @@
+---
+# Uso:
+#   ansible-playbook -i inventory/hosts.ini playbooks/payara_stop.yml
+
+- name: Detener Payara (Deployment Groups/instancias y DAS si aplica)
+  hosts: das
+  become: false
+  gather_facts: false
+
+  vars:
+    payara_action: stop
+
+  vars_prompt:
+    - name: payara_admin_pass
+      prompt: "Password del admin de asadmin"
+      private: true
+
+  roles:
+    - role: payara_actions

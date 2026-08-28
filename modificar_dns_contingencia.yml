@@ -1,0 +1,8 @@
+---
+- name: Cambio de  base de datos de Quito a Guayaquil
+  hosts: Srv-Contingencia
+  become: true
+  become_user: root
+
+  roles:
+  - edit_bdd_dns

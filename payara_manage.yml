@@ -1,0 +1,24 @@
+---
+# Uso:
+#   ansible-playbook -i inventory/hosts.ini playbooks/payara_manage.yml
+#
+#   También se puede fijar la acción sin que pregunte:
+#   ansible-playbook -i inventory/hosts.ini playbooks/payara_manage.yml -e "payara_action=status"
+
+- name: Gestionar Payara con Deployment Groups o Standalone, DAS opcional y correo
+  hosts: das
+  become: false
+  gather_facts: false
+
+  vars_prompt:
+    - name: payara_action
+      prompt: "Acción a ejecutar (status/stop/start)"
+      default: "status"
+      private: false
+
+    - name: payara_admin_pass
+      prompt: "Password del admin de asadmin"
+      private: true
+
+  roles:
+    - role: payara_actions

@@ -1,0 +1,54 @@
+---
+- name: Calcular si todos los hosts terminaron bien
+  ansible.builtin.set_fact:
+    payara_todo_ok: "{{ ansible_play_hosts | map('extract', hostvars, 'payara_ok') | select('sameas', false) | list | length == 0 }}"
+  run_once: true
+  delegate_to: localhost
+
+- name: Enviar correo con resultado
+  community.general.mail:
+    host: "{{ mail_host }}"
+    port: "{{ mail_port }}"
+    to: "{{ mail_to }}"
+    from: "{{ mail_from }}"
+    subject: >-
+      {{ '[Payara] Estado actual reportado (consulta, sin cambios)'
+         if payara_action == 'status'
+         else ('[Payara] OK - Acción '
+               ~ payara_action
+               ~ ' ejecutada correctamente'
+               if (payara_todo_ok | bool)
+               else '[Payara] ALERTA - Problemas ejecutando acción ' ~ payara_action) }}
+    body: |
+      Acción ejecutada: {{ payara_action }}
+      manage_das: {{ manage_das | default(false) }}
+      Dominio Payara: {{ payara_domain | default('NO DEFINIDO') }}
+      Resultado global: {{ 'OK' if (payara_todo_ok | bool) else 'CON PROBLEMAS - revisar' }}
+
+      {% for h in ansible_play_hosts %}
+      ==== {{ h }} ({{ hostvars[h].as_home }}) ====
+      Topología detectada: {{ hostvars[h].payara_topologia | default('SIN DATOS') }}
+      Deployment Groups procesados: {{ hostvars[h].payara_dg_procesados | default([]) | join(', ') }}
+      Acción DAS: {{ hostvars[h].payara_das_action | default('SIN DATOS') }}
+      DAS OK: {{ hostvars[h].payara_das_ok | default('SIN DATOS') }}
+      Estado: {{ 'OK' if (hostvars[h].payara_ok | default(false) | bool) else 'FALLIDO' }}
+
+      {% if not (hostvars[h].payara_ok | default(false) | bool) %}
+      Instancias que quedaron mal en {{ h }}:
+      {{ hostvars[h].payara_instancias_fallidas | default([]) | join(', ') }}
+      {% endif %}
+
+      Estado final:
+      {{ hostvars[h].payara_final_state | default('SIN DATOS - revisar manualmente') }}
+
+      {% endfor %}
+  delegate_to: localhost
+  run_once: true
+
+- name: Terminar con error real si algún host quedó mal
+  ansible.builtin.fail:
+    msg: >
+      Una o más acciones no quedaron en el estado esperado.
+      Revisa el correo enviado a {{ mail_to }}.
+  when: not (payara_todo_ok | bool)
+  run_once: true

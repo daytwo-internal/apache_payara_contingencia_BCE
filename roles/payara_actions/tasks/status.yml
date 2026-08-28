@@ -1,0 +1,27 @@
+---
+- name: Consultar estado actual de instancias
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-instances --long=true"
+  register: list_status
+  changed_when: false
+  failed_when: false
+
+- name: Consultar estado de dominios
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-domains"
+  register: list_domains_status
+  changed_when: false
+  failed_when: false
+
+- name: Publicar hechos de estado actual
+  ansible.builtin.set_fact:
+    payara_final_state: |
+      ESTADO DOMINIOS:
+      {{ list_domains_status.stdout | default('SIN DATOS') }}
+
+      ESTADO INSTANCIAS:
+      {{ list_status.stdout | default('SIN DATOS') }}
+    payara_dg_procesados: "{{ dg_list }}"
+    payara_ok: true
+    payara_instancias_fallidas: []
+    payara_das_action: "STATUS"
+    payara_das_ok: true
+    payara_topologia: "{{ 'DEPLOYMENT_GROUPS' if payara_has_dg | bool else 'STANDALONE/SIN_DG' }}"

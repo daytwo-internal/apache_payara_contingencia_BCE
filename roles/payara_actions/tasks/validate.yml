@@ -1,0 +1,48 @@
+---
+- name: Validar que payara_action tiene un valor permitido
+  ansible.builtin.assert:
+    that:
+      - payara_action is defined
+      - payara_action in valid_payara_actions
+    fail_msg: >
+      payara_action='{{ payara_action | default('') }}' no es válido.
+      Valores permitidos: {{ valid_payara_actions | join(', ') }}
+  run_once: true
+
+- name: Leer AS_HOME real en el host
+  ansible.builtin.shell: bash -lc 'echo $AS_HOME'
+  register: remote_as_home
+  changed_when: false
+
+- name: Verificar que AS_HOME remoto coincide con group_vars
+  ansible.builtin.assert:
+    that:
+      - (remote_as_home.stdout | trim) == as_home
+    fail_msg: >
+      En {{ inventory_hostname }} el AS_HOME real es
+      '{{ remote_as_home.stdout | trim }}' pero group_vars tiene
+      configurado '{{ as_home }}'.
+
+- name: Confirmar que asadmin existe
+  ansible.builtin.stat:
+    path: "{{ asadmin_path }}"
+  register: st_asadmin
+
+- name: Fallar si no existe asadmin
+  ansible.builtin.assert:
+    that:
+      - st_asadmin.stat.exists
+    fail_msg: "No se encontró asadmin en {{ asadmin_path }} en {{ inventory_hostname }}"
+
+- name: Crear archivo temporal para password de asadmin
+  ansible.builtin.tempfile:
+    state: file
+    suffix: asadmin
+  register: pwd_tmp
+
+- name: Escribir password de admin en archivo temporal
+  ansible.builtin.copy:
+    dest: "{{ pwd_tmp.path }}"
+    content: "AS_ADMIN_PASSWORD={{ payara_admin_pass }}\n"
+    mode: "0600"
+  no_log: true

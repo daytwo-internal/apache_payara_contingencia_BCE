@@ -1,0 +1,8 @@
+---
+- name: Reiniciar Apache en cualquier versión de RHEL
+  hosts: Servidores_Apache
+  become: true
+  become_user: root
+
+  roles:
+  - apache_start

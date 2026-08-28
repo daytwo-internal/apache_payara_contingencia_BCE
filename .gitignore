@@ -1,0 +1,17 @@
+# Llaves SSH y cualquier secreto - NUNCA deben ir al repositorio
+llaves/
+*.pem
+*id_rsa*
+*id_ed25519*
+!*.pub
+
+# Password de asadmin sin cifrar (si algún día lo pones ahí por error)
+admin_password.txt
+*passwordfile*
+
+# Vault (si en algún momento decides usarlo)
+.vault_pass
+vault_pass.txt
+
+# Basura común de Ansible
+*.retry

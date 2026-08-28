@@ -1,0 +1,19 @@
+---
+# Uso:
+#   ansible-playbook -i inventory/hosts.ini playbooks/payara_status.yml
+
+- name: Consultar estado de Payara (DAS + Deployment Groups/instancias)
+  hosts: das
+  become: false
+  gather_facts: false
+
+  vars:
+    payara_action: status
+
+  vars_prompt:
+    - name: payara_admin_pass
+      prompt: "Password del admin de asadmin"
+      private: true
+
+  roles:
+    - role: payara_actions

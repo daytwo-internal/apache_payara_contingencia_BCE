@@ -1,0 +1,54 @@
+---
+# Acción por defecto si no se pasa -e "payara_action=...".
+# Se deja "status" a propósito: es la opción segura (solo consulta, no
+# cambia nada), así nadie baja/sube instancias por accidente.
+payara_action: "status"
+
+# Lista de acciones válidas. Si algún día agregas una acción nueva
+# (por ejemplo "restart"), solo tienes que sumarla aquí y el playbook
+# la valida automáticamente.
+valid_payara_actions:
+- status
+- stop
+- start
+
+# El DAS se administra siempre en el propio host (asadmin corre localmente
+# en cada servidor vía SSH), así que apuntamos a localhost.
+das_host: "localhost"
+das_port: "4848"
+das_secure: true # usa --secure=true si el DAS está en HTTPS
+admin_user: "admin"
+
+# Descubrir automáticamente los Deployment Groups configurados en cada DAS
+# (con "asadmin list-deployment-groups"), en vez de mantener la lista a
+# mano en group_vars/payara_vX.yml. Recomendado: true.
+# Si algún día necesitas forzar una lista manual (por ejemplo para
+# controlar solo un subconjunto), pon esto en false y define dg_list
+# explícitamente en group_vars/payara_v5.yml o payara_v6.yml.
+dg_autodiscover: true
+
+
+# Reintentos de verificación de estado (10 x 15s = hasta 2.5 min esperando)
+check_retries: 10
+check_delay: 15
+
+# Configuración de correo
+mail_to: "uioinf-ibd-web@bce.ec"
+mail_from: "dcordova@bce.ec"
+mail_host: "correo.bce.fin.ec"
+mail_port: 25
+
+# Controla si el playbook administra también el DAS.
+# true:
+#   - start: levanta primero el DAS y luego los Deployment Groups.
+#   - stop: detiene primero los Deployment Groups y luego baja el DAS.
+# false:
+#   - Solo administra instancias/clusters. No toca el DAS.
+manage_das: false
+
+# Nombre del dominio Payara
+payara_domain: "production"
+
+# Espera para verificar DAS
+das_check_retries: 10
+das_check_delay: 10

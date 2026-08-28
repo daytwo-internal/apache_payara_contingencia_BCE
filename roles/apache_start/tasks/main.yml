@@ -1,0 +1,166 @@
+# ============================================================================
+# 0) Detectar qué servidor HTTP está disponible
+# ============================================================================
+- name: Verificar si apachectl está disponible
+  command: which apachectl
+  register: apache_path
+  failed_when: false
+  changed_when: false
+
+- name: Verificar si XAMPP está instalado
+  stat:
+    path: /opt/lampp/lampp
+  register: xampp_path
+
+- name: Fallar si no hay ningún servidor HTTP disponible
+  fail:
+    msg: "No se encontró ni Apache del sistema ni XAMPP instalado."
+  when:
+    - apache_path.rc != 0
+    - not xampp_path.stat.exists
+
+# ============================================================================
+# 1-3) Crear archivos temporales (compartido)
+# ============================================================================
+- name: Crear directorio temporal para passphrase
+  file:
+    path: /etc/httpd/passphrase
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Crear archivo temporal con passphrase
+  copy:
+    dest: /etc/httpd/passphrase/ssl-pass.txt
+    content: "{{ apache_passphrase }}"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Crear script para devolver passphrase
+  copy:
+    dest: /usr/libexec/httpd-read-pass.sh
+    content: |
+      #!/bin/bash
+      cat /etc/httpd/passphrase/ssl-pass.txt
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Aplicar contexto SELinux al script
+  command: restorecon -v /usr/libexec/httpd-read-pass.sh
+  failed_when: false
+
+# ============================================================================
+# 4-6) Configurar, iniciar y restaurar — APACHE SISTEMA
+# ============================================================================
+- name: Configurar SSLPassPhraseDialog temporal (Apache sistema)
+  replace:
+    path: /etc/httpd/conf.d/ssl.conf
+    regexp: '^SSLPassPhraseDialog\s+.*'
+    replace: 'SSLPassPhraseDialog exec:/usr/libexec/httpd-read-pass.sh'
+  when: apache_path.rc == 0
+
+- name: Iniciar Apache del sistema
+  shell: apachectl start
+  args:
+    executable: /bin/bash
+  register: apache_start_system
+  when: apache_path.rc == 0
+
+- name: Mostrar salida inicio Apache sistema
+  debug:
+    var: apache_start_system.stdout
+  when: apache_path.rc == 0
+
+- name: Restaurar SSLPassPhraseDialog original (Apache sistema)
+  replace:
+    path: /etc/httpd/conf.d/ssl.conf
+    regexp: '^SSLPassPhraseDialog\s+.*'
+    replace: 'SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog'
+  when: apache_path.rc == 0
+
+# ============================================================================
+# 4-6) Configurar, iniciar y restaurar — XAMPP
+# ============================================================================
+- name: Detectar ruta ssl.conf de XAMPP
+  find:
+    paths:
+      - /opt/lampp/etc/extra
+      - /opt/lampp/etc
+    patterns: "ssl.conf,httpd-ssl.conf"
+  register: xampp_ssl_conf
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Descomentar y configurar SSLPassPhraseDialog temporal (XAMPP)
+  replace:
+    path: "{{ xampp_ssl_conf.files[0].path }}"
+    regexp: '^#SSLPassPhraseDialog\s+.*'
+    replace: 'SSLPassPhraseDialog exec:/usr/libexec/httpd-read-pass.sh'
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+    - xampp_ssl_conf.files | length > 0
+
+- name: Matar procesos MySQL huérfanos (XAMPP)
+  shell: |
+    pkill -f mysqld_safe || true
+    pkill -f mysqld || true
+    sleep 2
+  args:
+    executable: /bin/bash
+  failed_when: false
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Detener XAMPP
+  shell: /opt/lampp/lampp stop
+  args:
+    executable: /bin/bash
+  failed_when: false
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Iniciar XAMPP completo
+  shell: /opt/lampp/lampp start
+  args:
+    executable: /bin/bash
+  register: xampp_start
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Mostrar salida inicio XAMPP
+  debug:
+    var: xampp_start.stdout
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Restaurar SSLPassPhraseDialog original comentada (XAMPP)
+  replace:
+    path: "{{ xampp_ssl_conf.files[0].path }}"
+    regexp: '^SSLPassPhraseDialog\s+.*'
+    replace: '#SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog'
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+    - xampp_ssl_conf.files | length > 0
+
+# ============================================================================
+# 7-8) Limpiar archivos temporales (compartido)
+# ============================================================================
+- name: Borrar archivo de passphrase temporal
+  file:
+    path: /etc/httpd/passphrase/ssl-pass.txt
+    state: absent
+
+- name: Borrar script temporal
+  file:
+    path: /usr/libexec/httpd-read-pass.sh
+    state: absent

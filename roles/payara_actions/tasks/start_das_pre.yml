@@ -1,0 +1,19 @@
+---
+- name: Levantar DAS antes de cualquier start
+  ansible.builtin.command: "{{ asadmin_path }} start-domain {{ payara_domain }}"
+  register: start_das_result
+  changed_when: true
+  failed_when: false
+
+- name: Mostrar resultado crudo del start-domain si hubo error
+  ansible.builtin.debug:
+    msg: "start-domain rc={{ start_das_result.rc }} stdout={{ start_das_result.stdout | default('') }} stderr={{ start_das_result.stderr | default('') }}"
+  when: start_das_result.rc != 0
+
+- name: Esperar a que el DAS responda por asadmin
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-domains"
+  register: das_status_check
+  until: das_status_check.rc == 0
+  retries: "{{ das_check_retries | default(check_retries) }}"
+  delay: "{{ das_check_delay | default(check_delay) }}"
+  changed_when: false

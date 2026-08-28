@@ -1,0 +1,20 @@
+---
+- name: Consultar dominios luego del start standalone
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-domains"
+  register: list_domains_after_start
+  changed_when: false
+  failed_when: false
+  when: manage_das | default(false) | bool
+
+- name: Publicar hechos del resultado final start standalone
+  ansible.builtin.set_fact:
+    payara_final_state: >-
+      Host sin Deployment Groups. {{
+      list_domains_after_start.stdout | default('No se tocó el DAS porque manage_das=false.')
+      }}
+    payara_dg_procesados: []
+    payara_ok: "{{ (not (manage_das | default(false) | bool)) or (list_domains_after_start is defined and list_domains_after_start.rc == 0) }}"
+    payara_instancias_fallidas: []
+    payara_das_action: "{{ 'START-DOMAIN' if (manage_das | default(false) | bool) else 'NO ADMINISTRADO' }}"
+    payara_das_ok: "{{ (not (manage_das | default(false) | bool)) or (list_domains_after_start is defined and list_domains_after_start.rc == 0) }}"
+    payara_topologia: "STANDALONE/SIN_DG"

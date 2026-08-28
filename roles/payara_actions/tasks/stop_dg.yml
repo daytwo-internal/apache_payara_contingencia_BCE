@@ -1,0 +1,88 @@
+---
+- name: Ejecutar stop-deployment-group para cada grupo
+  ansible.builtin.command: >
+    {{ asadmin_base_cmd }} stop-deployment-group {{ item }}
+  loop: "{{ dg_list }}"
+  register: stop_results
+  changed_when: true
+  failed_when: false
+
+- name: Mostrar resultado crudo del stop si hubo error
+  ansible.builtin.debug:
+    msg: "{{ item.item }} -> rc={{ item.rc }} : {{ item.stdout | default('') }} {{ item.stderr | default('') }}"
+  loop: "{{ stop_results.results }}"
+  when: item.rc != 0
+
+- name: Esperar a que todas las instancias queden detenidas
+  ansible.builtin.shell: >
+    {{ asadmin_base_cmd }} list-instances --long=true
+    | grep -E "^instancia|^instance"
+    | grep -vci "not running"
+  register: still_running
+  until: still_running.stdout | trim == "0"
+  retries: "{{ check_retries }}"
+  delay: "{{ check_delay }}"
+  changed_when: false
+  ignore_errors: true
+
+- name: Obtener listado tras intento normal de stop
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-instances --long=true"
+  register: list_normal
+  changed_when: false
+
+- name: Identificar instancias que siguen corriendo
+  ansible.builtin.set_fact:
+    instancias_pendientes: >-
+      {{ list_normal.stdout_lines
+         | select('match', '^(instancia|instance)')
+         | reject('search', 'not running')
+         | map('regex_replace', '^([^ \t]+).*', '\1')
+         | list }}
+
+- name: ESCALAR - Forzar stop-instance individual
+  ansible.builtin.command: >
+    {{ asadmin_base_cmd }} stop-instance --kill=true {{ item }}
+  loop: "{{ instancias_pendientes }}"
+  when: instancias_pendientes | length > 0
+  register: force_stop_results
+  changed_when: true
+  failed_when: false
+
+- name: Pausa breve para reflejar stop forzado
+  ansible.builtin.wait_for:
+    timeout: 10
+  delegate_to: localhost
+  when: instancias_pendientes | length > 0
+
+- name: Reobtener listado tras stop forzado
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-instances --long=true"
+  register: list_final
+  changed_when: false
+
+- name: Recalcular instancias que todavía siguen corriendo
+  ansible.builtin.set_fact:
+    instancias_fallidas: >-
+      {{ list_final.stdout_lines
+         | select('match', '^(instancia|instance)')
+         | reject('search', 'not running')
+         | map('regex_replace', '^([^ \t]+).*', '\1')
+         | list }}
+
+- name: Detener DAS después de detener todas las instancias
+  ansible.builtin.command: "{{ asadmin_path }} stop-domain {{ payara_domain }}"
+  when:
+    - manage_das | default(false) | bool
+    - instancias_fallidas | length == 0
+  register: stop_das_result
+  changed_when: true
+  failed_when: false
+
+- name: Publicar hechos del resultado final stop con DG
+  ansible.builtin.set_fact:
+    payara_final_state: "{{ list_final.stdout }}"
+    payara_dg_procesados: "{{ dg_list }}"
+    payara_ok: "{{ instancias_fallidas | length == 0 and ((not (manage_das | default(false) | bool)) or (stop_das_result is defined and stop_das_result.rc == 0)) }}"
+    payara_instancias_fallidas: "{{ instancias_fallidas }}"
+    payara_das_action: "{{ 'STOP-DOMAIN' if (manage_das | default(false) | bool) else 'NO ADMINISTRADO' }}"
+    payara_das_ok: "{{ (not (manage_das | default(false) | bool)) or (stop_das_result is defined and stop_das_result.rc == 0) }}"
+    payara_topologia: "DEPLOYMENT_GROUPS"

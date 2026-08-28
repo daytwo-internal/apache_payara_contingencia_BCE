@@ -1,0 +1,10 @@
+#payara_action: status
+asadmin_path: "{{ as_home }}/bin/asadmin"
+
+asadmin_base_cmd: >-
+  {{ asadmin_path }}
+  --host {{ das_host }}
+  --port {{ das_port }}
+  {{ '--secure=true' if das_secure else '' }}
+  --user {{ admin_user }}
+  --passwordfile {{ pwd_tmp.path }}

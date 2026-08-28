@@ -1,0 +1,107 @@
+# ============================================================================
+# 0) Detectar qué servidor HTTP está disponible
+# ============================================================================
+- name: Verificar si apachectl (sistema) está disponible
+  command: which apachectl
+  register: apache_path
+  failed_when: false
+  changed_when: false
+
+- name: Verificar si XAMPP está instalado
+  stat:
+    path: /opt/lampp/lampp
+  register: xampp_path
+
+- name: Fallar si no hay ningún servidor HTTP disponible
+  fail:
+    msg: "No se encontró ni Apache del sistema ni XAMPP instalado."
+  when:
+    - apache_path.rc != 0
+    - not xampp_path.stat.exists
+
+# ============================================================================
+# 1) Mostrar estado antes de bajar
+# ============================================================================
+- name: Mostrar estado actual de Apache (sistema)
+  shell: apachectl status || true
+  register: apache_status
+  when: apache_path.rc == 0
+
+- name: Mostrar salida del estado de Apache (sistema)
+  debug:
+    var: apache_status.stdout
+  when: apache_path.rc == 0
+
+- name: Mostrar estado actual de XAMPP
+  shell: /opt/lampp/lampp status || true
+  register: xampp_status
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Mostrar salida del estado de XAMPP
+  debug:
+    var: xampp_status.stdout
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+# ============================================================================
+# 2) Detener el servicio correspondiente
+# ============================================================================
+- name: Detener Apache del sistema
+  shell: apachectl stop || true
+  register: apache_stop
+  when: apache_path.rc == 0
+
+- name: Matar procesos MySQL huérfanos (XAMPP)
+  shell: |
+    pgrep -f mysqld | xargs kill -9 2>/dev/null || true
+    sleep 2
+  args:
+    executable: /bin/bash
+  failed_when: false
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Detener XAMPP completo
+  shell: /opt/lampp/lampp stop || true
+  register: xampp_stop
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Mostrar salida detención XAMPP
+  debug:
+    var: xampp_stop.stdout
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+# ============================================================================
+# 3) Verificar que quedó detenido
+# ============================================================================
+- name: Verificar estado final Apache sistema
+  shell: apachectl status || true
+  register: apache_status_final
+  when: apache_path.rc == 0
+
+- name: Mostrar estado final Apache sistema
+  debug:
+    msg: "Estado Apache: {{ 'DETENIDO' if apache_status_final.rc == 3 else 'CORRIENDO' if apache_status_final.rc == 0 else 'RC=' + apache_status_final.rc | string }}"
+  when: apache_path.rc == 0
+
+- name: Verificar estado final XAMPP
+  shell: /opt/lampp/lampp status || true
+  register: xampp_status_final
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists
+
+- name: Mostrar estado final XAMPP
+  debug:
+    var: xampp_status_final.stdout
+  when:
+    - apache_path.rc != 0
+    - xampp_path.stat.exists

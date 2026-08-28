@@ -1,0 +1,32 @@
+---
+- name: Descubrir automáticamente Deployment Groups
+  ansible.builtin.command: "{{ asadmin_base_cmd }} list-deployment-groups"
+  register: list_dg_raw
+  changed_when: false
+  when: dg_autodiscover | default(true) | bool
+
+- name: Publicar lista de Deployment Groups descubiertos
+  ansible.builtin.set_fact:
+    dg_list: >-
+      {{ list_dg_raw.stdout_lines
+         | map('trim')
+         | reject('equalto', '')
+         | reject('match', '^Command ')
+         | reject('match', '^List of Deployment Groups:')
+         | reject('search', 'No Deployment Group has been created')
+         | list }}
+  when: dg_autodiscover | default(true) | bool
+
+- name: Normalizar dg_list si no existe (autodescubrimiento desactivado)
+  ansible.builtin.set_fact:
+    dg_list: "{{ dg_list | default([]) }}"
+
+- name: Detectar si este host tiene Deployment Groups
+  ansible.builtin.set_fact:
+    payara_has_dg: "{{ dg_list | length > 0 }}"
+
+- name: Mostrar topología detectada
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} -> payara_has_dg={{ payara_has_dg }},
+      dg_list={{ dg_list }}

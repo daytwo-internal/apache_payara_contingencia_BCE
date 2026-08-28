@@ -1,0 +1,58 @@
+---
+# =========================================================================
+# Orquestador del rol. No contiene lógica de negocio, solo decide qué
+# archivo de tasks incluir según payara_action y la topología detectada.
+# =========================================================================
+
+- name: Validar entrada y preparar credenciales
+  ansible.builtin.include_tasks: validate.yml
+
+- name: Levantar DAS antes de cualquier start (si aplica)
+  ansible.builtin.include_tasks: start_das_pre.yml
+  when:
+    - payara_action == 'start'
+    - manage_das | default(false) | bool
+
+- name: Descubrir Deployment Groups del host
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Ejecutar acción solicitada con limpieza garantizada
+  block:
+
+    - name: Consultar estado actual
+      ansible.builtin.include_tasks: status.yml
+      when: payara_action == 'status'
+
+    - name: Detener Deployment Groups
+      ansible.builtin.include_tasks: stop_dg.yml
+      when:
+        - payara_action == 'stop'
+        - payara_has_dg | bool
+
+    - name: Detener servidor standalone (sin Deployment Groups)
+      ansible.builtin.include_tasks: stop_standalone.yml
+      when:
+        - payara_action == 'stop'
+        - not (payara_has_dg | bool)
+
+    - name: Iniciar Deployment Groups
+      ansible.builtin.include_tasks: start_dg.yml
+      when:
+        - payara_action == 'start'
+        - payara_has_dg | bool
+
+    - name: Iniciar servidor standalone (sin Deployment Groups)
+      ansible.builtin.include_tasks: start_standalone.yml
+      when:
+        - payara_action == 'start'
+        - not (payara_has_dg | bool)
+
+  always:
+    - name: Borrar password temporal del disco
+      ansible.builtin.file:
+        path: "{{ pwd_tmp.path }}"
+        state: absent
+      when: pwd_tmp is defined and pwd_tmp.path is defined
+
+- name: Reportar resultado global y enviar correo
+  ansible.builtin.include_tasks: report.yml

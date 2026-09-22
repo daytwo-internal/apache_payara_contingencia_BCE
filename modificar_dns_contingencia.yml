@@ -5,4 +5,4 @@
   become_user: root
 
   roles:
-  - edit_bdd_dns
+     - edit_bdd_dns

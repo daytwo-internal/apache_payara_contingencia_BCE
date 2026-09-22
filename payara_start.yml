@@ -10,10 +10,10 @@
   vars:
     payara_action: start
 
-  vars_prompt:
-    - name: payara_admin_pass
-      prompt: "Password del admin de asadmin"
-      private: true
+#  vars_prompt:
+#    - name: payara_admin_pass
+#      prompt: "Password del admin de asadmin"
+#      private: true
 
   roles:
     - role: payara_actions

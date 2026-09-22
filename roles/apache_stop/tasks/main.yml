@@ -2,18 +2,18 @@
 # 0) Detectar qué servidor HTTP está disponible
 # ============================================================================
 - name: Verificar si apachectl (sistema) está disponible
-  command: which apachectl
+  ansible.builtin.command: which apachectl
   register: apache_path
   failed_when: false
   changed_when: false
 
 - name: Verificar si XAMPP está instalado
-  stat:
+  ansible.builtin.stat:
     path: /opt/lampp/lampp
   register: xampp_path
 
 - name: Fallar si no hay ningún servidor HTTP disponible
-  fail:
+  ansible.builtin.fail:
     msg: "No se encontró ni Apache del sistema ni XAMPP instalado."
   when:
     - apache_path.rc != 0
@@ -23,24 +23,26 @@
 # 1) Mostrar estado antes de bajar
 # ============================================================================
 - name: Mostrar estado actual de Apache (sistema)
-  shell: apachectl status || true
+  ansible.builtin.shell: apachectl status || true
   register: apache_status
+  changed_when: false
   when: apache_path.rc == 0
 
 - name: Mostrar salida del estado de Apache (sistema)
-  debug:
+  ansible.builtin.debug:
     var: apache_status.stdout
   when: apache_path.rc == 0
 
 - name: Mostrar estado actual de XAMPP
-  shell: /opt/lampp/lampp status || true
+  ansible.builtin.shell: /opt/lampp/lampp status || true
   register: xampp_status
+  changed_when: false
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
 
 - name: Mostrar salida del estado de XAMPP
-  debug:
+  ansible.builtin.debug:
     var: xampp_status.stdout
   when:
     - apache_path.rc != 0
@@ -50,58 +52,110 @@
 # 2) Detener el servicio correspondiente
 # ============================================================================
 - name: Detener Apache del sistema
-  shell: apachectl stop || true
+  ansible.builtin.shell: apachectl stop || true
   register: apache_stop
+  changed_when: true
   when: apache_path.rc == 0
 
+- name: Esperar unos segundos a que Apache del sistema termine de bajar
+  ansible.builtin.wait_for:
+    timeout: 20
+  when: apache_path.rc == 0
+
+- name: Verificar si queda algún proceso httpd vivo tras el stop
+  ansible.builtin.command: pgrep httpd
+  register: httpd_leftover
+  failed_when: false
+  changed_when: false
+  when: apache_path.rc == 0
+
+- name: Forzar kill de httpd si no bajó a tiempo (evita colgar el próximo start)
+  ansible.builtin.command: pkill -9 httpd
+  register: httpd_force_kill
+  failed_when: false
+  changed_when: true
+  when:
+    - apache_path.rc == 0
+    - httpd_leftover.rc == 0
+
+- name: Reverificar tras el kill forzado
+  ansible.builtin.command: pgrep httpd
+  register: httpd_still_alive
+  failed_when: false
+  changed_when: false
+  when:
+    - apache_path.rc == 0
+    - httpd_leftover.rc == 0
+
 - name: Matar procesos MySQL huérfanos (XAMPP)
-  shell: |
+  ansible.builtin.shell: |
+    set -o pipefail
     pgrep -f mysqld | xargs kill -9 2>/dev/null || true
     sleep 2
   args:
     executable: /bin/bash
   failed_when: false
+  changed_when: true
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
 
 - name: Detener XAMPP completo
-  shell: /opt/lampp/lampp stop || true
+  ansible.builtin.shell: /opt/lampp/lampp stop || true
   register: xampp_stop
+  changed_when: true
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
 
 - name: Mostrar salida detención XAMPP
-  debug:
+  ansible.builtin.debug:
     var: xampp_stop.stdout
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
 
 # ============================================================================
-# 3) Verificar que quedó detenido
+# 3) Verificar que quedó detenido (SIEMPRE se muestra, incluso si falla)
 # ============================================================================
 - name: Verificar estado final Apache sistema
-  shell: apachectl status || true
+  ansible.builtin.shell: apachectl status || true
   register: apache_status_final
+  changed_when: false
   when: apache_path.rc == 0
 
 - name: Mostrar estado final Apache sistema
-  debug:
-    msg: "Estado Apache: {{ 'DETENIDO' if apache_status_final.rc == 3 else 'CORRIENDO' if apache_status_final.rc == 0 else 'RC=' + apache_status_final.rc | string }}"
+  ansible.builtin.debug:
+    msg: >-
+      Estado Apache:
+      {{ 'DETENIDO' if apache_status_final.rc == 3
+         else 'CORRIENDO' if apache_status_final.rc == 0
+         else 'RC=' + apache_status_final.rc | string }}
   when: apache_path.rc == 0
 
 - name: Verificar estado final XAMPP
-  shell: /opt/lampp/lampp status || true
+  ansible.builtin.shell: /opt/lampp/lampp status || true
   register: xampp_status_final
+  changed_when: false
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
 
 - name: Mostrar estado final XAMPP
-  debug:
+  ansible.builtin.debug:
     var: xampp_status_final.stdout
   when:
     - apache_path.rc != 0
     - xampp_path.stat.exists
+
+# ============================================================================
+# 4) Fallar de verdad si no quedó detenido (va AL FINAL, después de mostrar
+#    todo el diagnóstico de arriba, para no perder esa info en el job de AAP)
+# ============================================================================
+- name: Reportar error real si Apache no se pudo detener
+  ansible.builtin.fail:
+    msg: "No se pudo detener Apache completamente en {{ inventory_hostname }}, incluso tras forzar el kill."
+  when:
+    - apache_path.rc == 0
+    - httpd_leftover.rc == 0
+    - httpd_still_alive.rc == 0

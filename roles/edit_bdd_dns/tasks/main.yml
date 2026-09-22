@@ -1,59 +1,108 @@
-- name: Verificar si existe la linea activa de 172.20.40.36
-  shell: grep -c "^172.20.40.36.*bceqasep1" /etc/hosts
-  register: linea_activa_qto
+# ─── Detección de estado actual de cada línea ───────────────────────────────
+- name: Verificar si existe la linea activa de 172.20.40.36 (Quito nodo_1 / bceqasep1)
+  ansible.builtin.command: grep -c "^172.20.40.36.*bceqasep1" /etc/hosts
+  register: linea_activa_qto_36
   failed_when: false
   changed_when: false
 
-- name: Verificar si existe la linea activa de 172.17.10.113
-  shell: grep -c "^172.17.10.113.*bceqasep1" /etc/hosts
-  register: linea_activa_gye
+- name: Verificar si existe la linea activa de 172.20.40.37 (Quito nodo_2 / bceqasep2)
+  ansible.builtin.command: grep -c "^172.20.40.37.*bceqasep2" /etc/hosts
+  register: linea_activa_qto_37
   failed_when: false
   changed_when: false
 
-# ─── QUITO: activar 172.20.40.36 y comentar 172.17.10.113 ───────────────────
-- name: Descomentar linea "172.20.40.36" (nodo Quito)
-  replace:
+- name: Verificar si existe la linea activa de Guayaquil nodo_1 (bceqasep1)
+  ansible.builtin.command: grep -c "^172.17.10.113.*bceqasep1" /etc/hosts
+  register: linea_activa_gye_n1
+  failed_when: false
+  changed_when: false
+
+- name: Verificar si existe la linea activa de Guayaquil nodo_2 (bceqasep2)
+  ansible.builtin.command: grep -c "^172.17.10.113.*bceqasep2" /etc/hosts
+  register: linea_activa_gye_n2
+  failed_when: false
+  changed_when: false
+
+# ─── QUITO: activar .36/bceqasep1 y .37/bceqasep2, comentar ambos GYE ───────
+- name: Descomentar linea "172.20.40.36" (Quito nodo_1 / bceqasep1)
+  ansible.builtin.replace:
     path: /etc/hosts
     regexp: '^#{1,}\s*(172\.20\.40\.36\s+bceqasep1.*)'
     replace: '\1'
   when:
     - ciudad | lower == "quito"
-    - linea_activa_qto.stdout | int == 0
+    - linea_activa_qto_36.stdout | int == 0
 
-- name: Comentar linea "172.17.10.113" (nodo Guayaquil) cuando ciudad es Quito
-  replace:
+- name: Descomentar linea "172.20.40.37" (Quito nodo_2 / bceqasep2)
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^#{1,}\s*(172\.20\.40\.37\s+bceqasep2.*)'
+    replace: '\1'
+  when:
+    - ciudad | lower == "quito"
+    - linea_activa_qto_37.stdout | int == 0
+
+- name: Comentar linea Guayaquil nodo_1 (bceqasep1) cuando ciudad es Quito
+  ansible.builtin.replace:
     path: /etc/hosts
     regexp: '^(172\.17\.10\.113\s+bceqasep1.*)'
     replace: '#\1'
   when:
     - ciudad | lower == "quito"
-    - linea_activa_gye.stdout | int > 0
+    - linea_activa_gye_n1.stdout | int > 0
 
-# ─── GUAYAQUIL: activar 172.17.10.113 y comentar 172.20.40.36 ───────────────
-- name: Descomentar linea "172.17.10.113" (nodo Guayaquil)
-  replace:
+- name: Comentar linea Guayaquil nodo_2 (bceqasep2) cuando ciudad es Quito
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^(172\.17\.10\.113\s+bceqasep2.*)'
+    replace: '#\1'
+  when:
+    - ciudad | lower == "quito"
+    - linea_activa_gye_n2.stdout | int > 0
+
+# ─── GUAYAQUIL: activar ambos GYE, comentar .36/bceqasep1 y .37/bceqasep2 ───
+- name: Descomentar linea Guayaquil nodo_1 (bceqasep1)
+  ansible.builtin.replace:
     path: /etc/hosts
     regexp: '^#{1,}\s*(172\.17\.10\.113\s+bceqasep1.*)'
     replace: '\1'
   when:
     - ciudad | lower == "guayaquil"
-    - linea_activa_gye.stdout | int == 0
+    - linea_activa_gye_n1.stdout | int == 0
 
-- name: Comentar linea "172.20.40.36" (nodo Quito) cuando ciudad es Guayaquil
-  replace:
+- name: Descomentar linea Guayaquil nodo_2 (bceqasep2)
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^#{1,}\s*(172\.17\.10\.113\s+bceqasep2.*)'
+    replace: '\1'
+  when:
+    - ciudad | lower == "guayaquil"
+    - linea_activa_gye_n2.stdout | int == 0
+
+- name: Comentar linea "172.20.40.36" (Quito nodo_1 / bceqasep1) cuando ciudad es Guayaquil
+  ansible.builtin.replace:
     path: /etc/hosts
     regexp: '^(172\.20\.40\.36\s+bceqasep1.*)'
     replace: '#\1'
   when:
     - ciudad | lower == "guayaquil"
-    - linea_activa_qto.stdout | int > 0
+    - linea_activa_qto_36.stdout | int > 0
+
+- name: Comentar linea "172.20.40.37" (Quito nodo_2 / bceqasep2) cuando ciudad es Guayaquil
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^(172\.20\.40\.37\s+bceqasep2.*)'
+    replace: '#\1'
+  when:
+    - ciudad | lower == "guayaquil"
+    - linea_activa_qto_37.stdout | int > 0
 
 # ─── Verificación final ──────────────────────────────────────────────────────
 - name: Verificar resultado final
-  shell: grep "bceqasep1" /etc/hosts
+  ansible.builtin.command: grep -E "bceqasep1|bceqasep2" /etc/hosts
   register: resultado
   changed_when: false
 
 - name: Mostrar estado final
-  debug:
+  ansible.builtin.debug:
     msg: "{{ resultado.stdout_lines }}"

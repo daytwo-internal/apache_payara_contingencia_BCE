@@ -1,10 +1,31 @@
 [apache_uio]
 bceapacheuio01
-#ansible_host=
+
 
 [apache_gye]
-bceapachegye01
+#bceapachegye01
 #ansible_host=
+172.17.160.10
+172.17.160.60
+172.17.160.18
+
+[PAYARA_gye_prod]
+(DAS) 172.17.160.69 bcegparayaprod01 - (INS) 172.17.160.70 bcegparayaprod02, 172.17.160.71 bcegparayaprod03
+
+
+[paratodaslas_maquinas]
+usr003
+
+[PAYARAS]
+(DAS) bcegwcacprd01 172.17.160.20 - (INS) bcegwcacprd02 172.17.160.21
+(DAS) 172.17.160.69 bcegparayaprod01 - (INS) 172.17.160.70 bcegparayaprod02, 172.17.160.71 bcegparayaprod03
+(DAS) 172.18.23.13 - (INS) 172.18.23.14, 172.18.23.15
+(DAS) 172.18.25.11 - (INS) 172.18.25.12, 172.18.25.13
+(DAS) 172.17.160.58 - (INS) 172.17.160.59
+(DAS) 172.28.3.128
+(DAS) 172.28.2.43
+(DAS) 172.28.2.48:4848
+
 
 
 [payara_v6]
@@ -30,6 +51,8 @@ payara_v5
 [Servidores_Apache:children]
 apache_uio
 apache_gye
+
+[Srv-Contingencia]
 
 
 

@@ -1,0 +1,5 @@
+---
+collections:
+  - name: community.general
+    # Opcional: Puedes fijar una versión específica para asegurar la estabilidad en producción
+    # version: "13.4.0"

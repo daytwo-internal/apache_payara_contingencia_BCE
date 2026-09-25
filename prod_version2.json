@@ -1,0 +1,301 @@
+{
+  "project_name": "apache_payara_contingencia_BCE",
+  "responsible_area": "<COMPLETAR_AREA>",
+  "repository_URL": "<COMPLETAR_URL_REPO>",
+  "organization": "Banco Central del Ecuador",
+  "notas_de_seguridad": [
+    "Este archivo NUNCA debe contener valores reales de secretos (passwords, llaves SSH, passphrases).",
+    "La sección 'credentials' declara qué credenciales deben EXISTIR (nombre + tipo), no sus valores.",
+    "El pipeline debe crear la credencial vacía si no existe, y NUNCA sobreescribir un 'inputs' con secretos ya cargados manualmente en AAP.",
+    "Los valores reales de cada credencial se cargan una sola vez a mano en AAP, o vía un vault/secrets-manager separado del control de versiones de este repo."
+  ],
+  "credential_types": [
+    {
+      "name": "Payara asadmin",
+      "kind": "cloud",
+      "estado": "ya existe en AAP",
+      "inputs": {
+        "fields": [
+          {
+            "id": "asadmin_username",
+            "type": "string",
+            "label": "Usuario de asadmin (File Realm)"
+          },
+          {
+            "id": "asadmin_password",
+            "type": "string",
+            "label": "Password de asadmin",
+            "secret": true
+          }
+        ],
+        "required": [
+          "asadmin_username",
+          "asadmin_password"
+        ]
+      },
+      "injectors": {
+        "extra_vars": {
+          "admin_user": "{{ asadmin_username }}",
+          "payara_admin_pass": "{{ asadmin_password }}"
+        }
+      }
+    },
+    {
+      "name": "Apache Passphrase",
+      "kind": "cloud",
+      "estado": "ya existe en AAP",
+      "inputs": {
+        "fields": [
+          {
+            "id": "passphrase",
+            "type": "string",
+            "label": "Apache Passphrase",
+            "secret": true
+          }
+        ],
+        "required": [
+          "passphrase"
+        ]
+      },
+      "injectors": {
+        "extra_vars": {
+          "apache_passphrase": "{{ passphrase }}"
+        }
+      }
+    }
+  ],
+  "credentials": [
+    {
+      "name": "SSH - Payara DEV",
+      "credential_type": "Machine",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "ssh_key_data"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (dev)"
+      ]
+    },
+    {
+      "name": "Payara asadmin - DEV",
+      "credential_type": "Payara asadmin",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "asadmin_username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "asadmin_password"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (dev)"
+      ]
+    },
+    {
+      "name": "SSH - Payara QA",
+      "credential_type": "Machine",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "ssh_key_data"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (qa)"
+      ]
+    },
+    {
+      "name": "Payara asadmin - QA",
+      "credential_type": "Payara asadmin",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "asadmin_username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "asadmin_password"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (qa)"
+      ]
+    },
+    {
+      "name": "SSH - Payara PROD",
+      "credential_type": "Machine",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "ssh_key_data"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (prod)"
+      ]
+    },
+    {
+      "name": "Payara asadmin - PROD",
+      "credential_type": "Payara asadmin",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "asadmin_username": "<COMPLETAR_EN_AAP_NO_AQUI>"
+      },
+      "secret_fields_not_in_this_file": [
+        "asadmin_password"
+      ],
+      "usado_por": [
+        "Payara Status/Stop/Start (prod)"
+      ]
+    },
+    {
+      "name": "Apache Passphrase",
+      "credential_type": "Apache Passphrase",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {},
+      "secret_fields_not_in_this_file": [
+        "passphrase"
+      ],
+      "usado_por": [
+        "Apache Iniciar (todos los ambientes)"
+      ]
+    },
+    {
+      "name": "SSH Apache/DNS (usr003)",
+      "credential_type": "Machine",
+      "organization": "Banco Central del Ecuador",
+      "inputs": {
+        "username": "usr003",
+        "become_method": "sudo",
+        "become_username": "usr003"
+      },
+      "secret_fields_not_in_this_file": [
+        "password",
+        "become_password"
+      ],
+      "usado_por": [
+        "Apache Detener/Iniciar y DNS Contingencia (todos los ambientes)"
+      ]
+    }
+  ],
+  "inventories": [
+    {
+      "name_of_inventory": "BCE Contingencia - DEV",
+      "type": "repo",
+      "path": "inventories/dev/inventory.yml",
+      "grupos": [
+        "apache_uio",
+        "apache_gye",
+        "payara_uio",
+        "payara_gye",
+        "servidores_apache",
+        "das",
+        "srv_contingencia"
+      ]
+    },
+    {
+      "name_of_inventory": "BCE Contingencia - QA",
+      "type": "repo",
+      "path": "inventories/qa/inventory.yml",
+      "grupos": [
+        "apache_uio",
+        "apache_gye",
+        "payara_uio",
+        "payara_gye",
+        "servidores_apache",
+        "das",
+        "srv_contingencia"
+      ]
+    },
+    {
+      "name_of_inventory": "BCE Contingencia - PROD",
+      "type": "repo",
+      "path": "inventories/prod/inventory.yml",
+      "grupos": [
+        "apache_uio",
+        "apache_gye",
+        "payara_uio",
+        "payara_gye",
+        "servidores_apache",
+        "das",
+        "srv_contingencia"
+      ]
+    }
+  ],
+    "job_templates": [
+    {
+      "name": "bce-payara-stop-prod-gye",
+      "description": "Detiene Deployment Groups puntuales de Payara en PROD GYE (ver dg_target)",
+      "job_type": "run",
+      "inventory_name": "BCE Contingencia - PROD",
+      "project_playbook": "payara_stop.yml",
+      "limit": "payara_gye",
+      "credentials": [
+        "SSH - Payara PROD",
+        "Payara asadmin - PROD"
+      ],
+      "execution_groups": [
+        "<COMPLETAR_TEAM>"
+      ],
+      "execution_environment": "Default execution environment",
+      "extra_vars": {
+        "dg_target": [
+          "cluster-DG-adf",
+          "cluster-DG-agt",
+          "cluster-DG-ccc",
+          "cluster-DG-cccapp",
+          "cluster-DG-cds",
+          "cluster-DG-col",
+          "cluster-DG-sgi",
+          "cluster-DG-smi",
+          "cluster-DG-srp",
+          "cluster-DG-sts",
+          "cluster-DG-wgi"
+        ]
+      },
+      "survey_enabled": false,
+      "survey_spec": null,
+      "ask_job_type_on_launch": false,
+      "ask_verbosity_on_launch": true,
+      "ask_limit_on_launch": false,
+      "forks": 5,
+      "is_part_of_workflow": true,
+      "manual_time_in_minutes": 20,
+      "nivel_afectacion": 3,
+      "nota": "dg_target es EXCLUSIVO de este DAS. Falla antes de tocar nada si no coincide con lo que existe realmente."
+    },
+    {
+      "name": "bce-payara-start-prod-gye",
+      "description": "Inicia Deployment Groups puntuales de Payara en PROD GYE (ver dg_target)",
+      "job_type": "run",
+      "inventory_name": "BCE Contingencia - PROD",
+      "project_playbook": "payara_start.yml",
+      "limit": "payara_gye",
+      "credentials": [
+        "SSH - Payara PROD",
+        "Payara asadmin - PROD"
+      ],
+      "execution_groups": [
+        "<COMPLETAR_TEAM>"
+      ],
+      "execution_environment": "Default execution environment",
+      "extra_vars": {
+        "dg_target": [
+          "<COMPLETAR_DG_1>",
+          "<COMPLETAR_DG_2>"
+        ]
+      },
+      "survey_enabled": false,
+      "survey_spec": null,
+      "ask_job_type_on_launch": false,
+      "ask_verbosity_on_launch": true,
+      "ask_limit_on_launch": false,
+      "forks": 5,
+      "is_part_of_workflow": true,
+      "manual_time_in_minutes": 20,
+      "nivel_afectacion": 3,
+      "nota": "dg_target es EXCLUSIVO de este DAS. Falla antes de tocar nada si no coincide con lo que existe realmente."
+    }
+    ]
+}

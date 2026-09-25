@@ -1,4 +1,0 @@
----
-# Debe coincidir con el valor real de $AS_HOME en este host
-# (el playbook lo valida en pre_tasks)
-as_home: "/sfw/payara5/glassfish"

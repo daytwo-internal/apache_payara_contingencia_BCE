@@ -1,60 +1,14 @@
-[apache_uio]
-bceapacheuio01
-
-
-[apache_gye]
-#bceapachegye01
-#ansible_host=
-172.17.160.10
-172.17.160.60
-172.17.160.18
-
-[PAYARA_gye_prod]
-(DAS) 172.17.160.69 bcegparayaprod01 - (INS) 172.17.160.70 bcegparayaprod02, 172.17.160.71 bcegparayaprod03
-
-
-[paratodaslas_maquinas]
-usr003
-
-[PAYARAS]
-(DAS) bcegwcacprd01 172.17.160.20 - (INS) bcegwcacprd02 172.17.160.21
-(DAS) 172.17.160.69 bcegparayaprod01 - (INS) 172.17.160.70 bcegparayaprod02, 172.17.160.71 bcegparayaprod03
-(DAS) 172.18.23.13 - (INS) 172.18.23.14, 172.18.23.15
-(DAS) 172.18.25.11 - (INS) 172.18.25.12, 172.18.25.13
-(DAS) 172.17.160.58 - (INS) 172.17.160.59
-(DAS) 172.28.3.128
-(DAS) 172.28.2.43
-(DAS) 172.28.2.48:4848
-
-
-
 [payara_v6]
-bceqlbtrsitdes01 ansible_host=172.28.3.128 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
+#bceqlbtrsitdes01 ansible_host=172.28.3.128 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
 
 [payara_v5]
-bceqpayaraqa04 ansible_host=172.23.34.49 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
+#bceqpayaraqa04 ansible_host=172.23.34.49 ansible_user=payara ansible_ssh_private_key_file=llaves/id_ed25519_gitlab_ci
 
 # Grupo "das" que agrupa a ambos, para poder correr el playbook contra
 # todos con "hosts: das", o limitarlo con --limit payara_v5 / --limit payara_v6
 [das:children]
 payara_v6
 payara_v5
-
-# Ajusta cuáles de payara_v5/v6 son UIO y cuáles GYE, o cruza ambos ejes
-# con grupos hijos si UIO/GYE conviven con v5/v6 al mismo tiempo.
-[payara_uio:children]
-# ...
-
-[payara_gye:children]
-# ...
-
-[Servidores_Apache:children]
-apache_uio
-apache_gye
-
-[Srv-Contingencia]
-
-
 
 # La ruta de ansible_ssh_private_key_file de arriba es RELATIVA: asume que
 # ejecutas "ansible-playbook" desde la raíz del proyecto (donde está esta

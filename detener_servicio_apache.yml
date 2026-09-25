@@ -5,4 +5,4 @@
   become_user: root
 
   roles:
-   - apache_stop
+  - apache_stop

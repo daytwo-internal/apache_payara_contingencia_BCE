@@ -21,3 +21,5 @@ check_delay: 10
 
 # Puerto de correo por defecto (host/to/from se definen por entorno)
 mail_port: 25
+
+dg_target: []

@@ -1,4 +1,11 @@
 ---
+- name: Normalizar dg_target (acepta lista o texto separado por comas del Survey)
+  ansible.builtin.set_fact:
+    dg_target: >-
+      {{ (dg_target | trim).split(',') | map('trim') | reject('equalto', '') | list
+         if (dg_target is string)
+         else (dg_target | default([])) }}
+
 - name: Descubrir automáticamente Deployment Groups
   ansible.builtin.command: "{{ asadmin_base_cmd }} list-deployment-groups"
   register: list_dg_raw
@@ -7,7 +14,7 @@
 
 - name: Publicar lista de Deployment Groups descubiertos
   ansible.builtin.set_fact:
-    dg_list: >-
+    dg_list_discovered: >-
       {{ list_dg_raw.stdout_lines
          | map('trim')
          | reject('equalto', '')
@@ -17,11 +24,31 @@
          | list }}
   when: dg_autodiscover | default(true) | bool
 
-- name: Normalizar dg_list si no existe (autodescubrimiento desactivado)
+- name: Normalizar dg_list_discovered si no existe (autodescubrimiento desactivado)
   ansible.builtin.set_fact:
-    dg_list: "{{ dg_list | default([]) }}"
+    dg_list_discovered: "{{ dg_list_discovered | default([]) }}"
 
-- name: Detectar si este host tiene Deployment Groups
+- name: Aplicar filtro dg_target si el operador especificó DG concretos
+  ansible.builtin.set_fact:
+    dg_list: >-
+      {{ dg_list_discovered | intersect(dg_target)
+         if (dg_target | default([]) | length > 0)
+         else dg_list_discovered }}
+
+- name: Fallar si dg_target no coincide exactamente con los DG existentes en este DAS
+  ansible.builtin.fail:
+    msg: >-
+      El dg_target configurado para {{ inventory_hostname }} no coincide con
+      los Deployment Groups que existen realmente en este DAS ahora mismo.
+      Faltantes: {{ dg_target | difference(dg_list_discovered) }}.
+      Esto normalmente significa que el Job Template quedó desactualizado
+      (un DG fue creado, renombrado o eliminado) y necesita revisión antes
+      de continuar. No se ejecuta ninguna acción hasta corregir esto.
+  when:
+    - dg_target | default([]) | length > 0
+    - (dg_target | difference(dg_list_discovered) | length) > 0
+
+- name: Detectar si este host tiene Deployment Groups (tras filtro)
   ansible.builtin.set_fact:
     payara_has_dg: "{{ dg_list | length > 0 }}"
 
@@ -29,4 +56,11 @@
   ansible.builtin.debug:
     msg: >-
       {{ inventory_hostname }} -> payara_has_dg={{ payara_has_dg }},
-      dg_list={{ dg_list }}
+      dg_list={{ dg_list }}{{ ' (filtrado por dg_target)' if (dg_target | default([]) | length > 0) else '' }}
+
+- name: Mostrar qué DG quedan FUERA de esta ejecución (no se tocan)
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} -> DG que NO se tocan en esta ejecución:
+      {{ dg_list_discovered | difference(dg_target) }}
+  when: dg_target | default([]) | length > 0

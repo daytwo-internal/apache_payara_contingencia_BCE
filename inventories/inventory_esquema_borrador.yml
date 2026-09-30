@@ -26,6 +26,14 @@ usr003
 (DAS) 172.28.2.43
 (DAS) 172.28.2.48:4848
 
+###10.  6 SON DAS y cuatro standalone
+69
+WCACORE 20
+WCA  58
+WCA WEB 58
+
+#####STANDALONE##########
+
 
 
 [payara_v6]

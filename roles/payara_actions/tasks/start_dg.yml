@@ -1,7 +1,10 @@
 ---
 - name: Ejecutar start-deployment-group para cada grupo
   ansible.builtin.command: >
-    {{ asadmin_base_cmd }} start-deployment-group {{ item }}
+    {{ asadmin_base_cmd }} start-deployment-group
+    --timeout={{ dg_action_timeout }}
+    --instanceTimeout={{ dg_action_instance_timeout }}
+    {{ item }}
   loop: "{{ dg_list }}"
   register: start_results
   changed_when: true
@@ -13,67 +16,23 @@
   loop: "{{ start_results.results }}"
   when: item.rc != 0
 
-- name: Esperar a que todas las instancias queden corriendo
-  ansible.builtin.shell: >
-    {{ asadmin_base_cmd }} list-instances --long=true
-    | grep -E "^instancia|^instance"
-    | grep -ci "not running"
-  register: not_running_count
-  until: not_running_count.stdout | trim == "0"
-  retries: "{{ check_retries }}"
-  delay: "{{ check_delay }}"
-  changed_when: false
-  ignore_errors: true
-
-- name: Obtener listado tras intento normal de start
-  ansible.builtin.command: "{{ asadmin_base_cmd }} list-instances --long=true"
-  register: list_normal
-  changed_when: false
-
-- name: Identificar instancias que siguen sin levantar
+- name: Identificar DG que no se pudieron iniciar
   ansible.builtin.set_fact:
-    instancias_pendientes: >-
-      {{ list_normal.stdout_lines
-         | select('match', '^(instancia|instance)')
-         | select('search', 'not running')
-         | map('regex_replace', '^([^ \t]+).*', '\1')
-         | list }}
-
-- name: ESCALAR - Reintentar start-instance individual
-  ansible.builtin.command: >
-    {{ asadmin_base_cmd }} start-instance {{ item }}
-  loop: "{{ instancias_pendientes }}"
-  when: instancias_pendientes | length > 0
-  register: force_start_results
-  changed_when: true
-  failed_when: false
-
-- name: Pausa breve para reflejar start
-  ansible.builtin.wait_for:
-    timeout: 10
-  delegate_to: localhost
-  when: instancias_pendientes | length > 0
-
-- name: Reobtener listado tras reintento de start
-  ansible.builtin.command: "{{ asadmin_base_cmd }} list-instances --long=true"
-  register: list_final
-  changed_when: false
-
-- name: Recalcular instancias que todavía no levantaron
-  ansible.builtin.set_fact:
-    instancias_fallidas: >-
-      {{ list_final.stdout_lines
-         | select('match', '^(instancia|instance)')
-         | select('search', 'not running')
-         | map('regex_replace', '^([^ \t]+).*', '\1')
+    dg_fallidos: >-
+      {{ start_results.results
+         | selectattr('rc', 'ne', 0)
+         | map(attribute='item')
          | list }}
 
 - name: Publicar hechos del resultado final start con DG
   ansible.builtin.set_fact:
-    payara_final_state: "{{ list_final.stdout }}"
+    payara_final_state: >-
+      DG procesados: {{ dg_list }}.
+      {{ 'Todos iniciados correctamente.' if dg_fallidos | length == 0
+         else 'Fallaron: ' ~ (dg_fallidos | join(', ')) }}
     payara_dg_procesados: "{{ dg_list }}"
-    payara_ok: "{{ instancias_fallidas | length == 0 }}"
-    payara_instancias_fallidas: "{{ instancias_fallidas }}"
+    payara_ok: "{{ dg_fallidos | length == 0 }}"
+    payara_instancias_fallidas: "{{ dg_fallidos }}"
     payara_das_action: "{{ 'START-DOMAIN' if (manage_das | default(false) | bool) else 'NO ADMINISTRADO' }}"
     payara_das_ok: true
     payara_topologia: "DEPLOYMENT_GROUPS"

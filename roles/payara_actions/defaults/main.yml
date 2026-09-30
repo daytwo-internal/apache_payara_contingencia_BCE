@@ -23,3 +23,18 @@ check_delay: 10
 mail_port: 25
 
 dg_target: []
+
+dg_action_timeout: 200
+dg_action_instance_timeout: 200
+
+
+# Timeout de seguridad (segundos) para el comando "start-domain" en sí:
+# si asadmin se cuelga (no que tarde, que nunca regrese), "timeout" del SO
+# lo mata a esos segundos en vez de dejar el job colgado indefinidamente.
+das_start_command_timeout: 300
+ 
+# Timeout de seguridad (segundos) por CADA llamada individual de
+# "list-domains" dentro del loop de espera. check_retries/check_delay ya
+# limitan el total acumulado, pero no protegen una llamada puntual que se
+# cuelgue — esto sí.
+das_check_command_timeout: 30

@@ -1,0 +1,17 @@
+---
+# Nodo "checkpoint" para el Workflow Visualizer de AAP.
+# No hace ningún cambio real — solo sirve como punto de convergencia único
+# entre "todos los Apache detenidos" y "empezar a detener Payara", para que
+# el workflow no tenga que cruzar cada Apache con cada Payara individualmente.
+#
+# Uso en AAP: Job Template sin credenciales, Inventory mínimo (localhost).
+
+- name: Checkpoint - confirmar convergencia antes de continuar
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Marcar checkpoint alcanzado
+      ansible.builtin.debug:
+        msg: "Checkpoint alcanzado: todos los padres requeridos terminaron con éxito."

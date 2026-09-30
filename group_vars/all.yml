@@ -44,7 +44,9 @@ mail_port: 25
 #   - stop: detiene primero los Deployment Groups y luego baja el DAS.
 # false:
 #   - Solo administra instancias/clusters. No toca el DAS.
-manage_das: false
+
+##se comentó esta variable pq el aap si mira las variables que estan en all.yml pq el group_vars está en la raiz, asi no este sincronizado el inventario con groups_vars, si lo lee
+#manage_das: false  --> creamos esto a nivel de cada grupo en el aap, y tambien dentro del host.
 
 # Nombre del dominio Payara
 payara_domain: "production"
